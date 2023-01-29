@@ -2,6 +2,7 @@ package pairmatching.dto;
 
 import pairmatching.Course;
 import pairmatching.Level;
+import pairmatching.Match;
 
 public class PairDto {
 
@@ -13,11 +14,19 @@ public class PairDto {
 
     public PairDto(String input) {
         this.input = input;
+        setting(input);
+    }
+
+    private void setting(String input) {
         String[] options = input.split(", ");
         course = Course.findCourseByName(options[0]);
         level = Level.findLevelByName(options[1]);
         mission = options[2];
         checkInputMission();
+    }
+
+    public Match toMatch(){
+        return new Match(course, level, mission);
     }
 
     public void checkInputMission(){

@@ -11,6 +11,11 @@ public class Pair {
         return crews.containsAll(pair.getCrews());
     }
 
+    public Pair(String crew1, String crew2) {
+        addCrew(crew1);
+        addCrew(crew2);
+    }
+
     public void addCrew(String crew){
         crews.add(crew);
     }

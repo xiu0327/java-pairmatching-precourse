@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static camp.nextstep.edu.missionutils.Randoms.*;
+
 public class PairOutputService {
 
     private final HashMap<Integer, Match> matches = new HashMap<>();
@@ -22,8 +24,7 @@ public class PairOutputService {
                 if(input.equals("1")) pairMatching();
                 if(input.equals("2")) findPair();
                 if(input.equals("3")) pairInitialization();
-                if(input.equals("Q")) break;
-
+                if(input.equals("Q")) return;
             }catch (NotFoundPairs e){
                 System.out.println("[ERROR] 찾으시는 페어 정보가 없습니다.");
             }
@@ -31,46 +32,52 @@ public class PairOutputService {
                 System.out.println("[ERROR] 매칭 실패.");
             }
         }
-
     }
 
     /* 1. 페어 매칭 */
     public void pairMatching() throws IOException {
         PairDto pairDto = pairInputService.selectOptionPrint();
-
-        if(matches.get(pairDto.getInput().hashCode()) != null){
-            String answer = pairInputService.selectRematchPrint();
-            if(answer.equals("아니오")) return;
-        }
-
-        Match match = new Match(pairDto.getCourse(), pairDto.getLevel(), pairDto.getMission());
-
         List<String> crews = pairInputService.crewFileRead(pairDto.getCourse());
+        if (checkRematching(pairDto)) return;
+        Match match = createMatch(pairDto, shuffle(crews));
+        matches.put(pairDto.getInput().hashCode(), match);
+        match.printPair();
+    }
 
-        List<Match> sameLevelMatch = findSameLevelMatch(pairDto.getLevel());
-
+    /* 페어 매칭 생성 */
+    private Match createMatch(PairDto pairDto, List<String> crewList) {
+        Match match = pairDto.toMatch();
         int count = 0;
-        int i = 0;
-        List<String> crewList = Randoms.shuffle(crews);
-        while(i <= limitIterator(crewList.size())){
+        for(int i = 0; i <= limitIterator(crewList.size()); i+=2){
             if(count == 3) throw new IllegalStateException();
-            Pair pair = new Pair();
-            pair.addCrew(crewList.get(i));
-            pair.addCrew(crewList.get(i+1));
-            if(i+2 == crewList.size()-1){
-                pair.addCrew(crewList.get(crewList.size()-1));
-            }
-            if(checkPair(pair, sameLevelMatch)){
+            Pair pair = createPair(i, crewList);
+            if(checkPair(pair, pairDto.getLevel())){
                 i = 0;
-                crewList = Randoms.shuffle(crews);
+                crewList = shuffle(crewList);
                 count++;
                 continue;
             }
             match.addPair(pair);
-            i += 2;
         }
-        matches.put(pairDto.getInput().hashCode(), match);
-        match.printPair();
+        return match;
+    }
+
+    /* 페어 생성 */
+    private Pair createPair(int i, List<String> crewList) {
+        Pair pair = new Pair(crewList.get(i), crewList.get(i +1));
+        if(i +2 == crewList.size()-1) {
+            pair.addCrew(crewList.get(crewList.size()-1));
+        }
+        return pair;
+    }
+
+    /* 리매칭 여부 확인 */
+    private boolean checkRematching(PairDto pairDto) {
+        if(matches.get(pairDto.getInput().hashCode()) != null){
+            String answer = pairInputService.selectRematchPrint();
+            if(answer.equals("아니오")) return true;
+        }
+        return false;
     }
 
     /* 2. 페어 조회 */
@@ -86,7 +93,8 @@ public class PairOutputService {
     }
 
     /* 같은 레벨에서 만난 적 있는 페어 인지 */
-    public Boolean checkPair(Pair pair, List<Match> sameLevelMatch) {
+    public Boolean checkPair(Pair pair, Level level) {
+        List<Match> sameLevelMatch = findSameLevelMatch(level);
         for (Match match : sameLevelMatch) {
             if(match.getPairs().stream()
                     .anyMatch(i -> i.equalPair(pair))) {
